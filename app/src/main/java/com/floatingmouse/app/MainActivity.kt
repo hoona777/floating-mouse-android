@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val desc = TextView(this).apply {
-            text = "جهت فعال‌سازی نشانگر موس و کپسول کنترل روی کل صفحه گوشی (شامل Mixamo و برنامه‌ها)، ۲ مجوز زیر را فعال کنید:"
+            text = "جهت فعال‌سازی نشانگر و کپسول شناور روی کل صفحه گوشی، لطفا ۲ مجوز زیر را فعال کنید:"
             textSize = 14f
             setTextColor(0xFFE2E8F0.toInt())
             setPadding(0, 0, 0, 48)

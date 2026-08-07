@@ -31,169 +31,169 @@ jobs:
           mkdir -p app/src/main/res/values
 
           cat << 'EOF' > settings.gradle
-          include ':app'
-          rootProject.name = 'FloatingMouse'
-          EOF
+include ':app'
+rootProject.name = 'FloatingMouse'
+EOF
 
           cat << 'EOF' > build.gradle
-          buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.1.1'
-                  classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0'
-              }
-          }
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.1'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0'
+    }
+}
 
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          EOF
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+EOF
 
           cat << 'EOF' > app/build.gradle
-          plugins {
-              id 'com.android.application'
-              id 'org.jetbrains.kotlin.android'
-          }
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
 
-          android {
-              namespace 'com.floatingmouse.app'
-              compileSdk 34
+android {
+    namespace 'com.floatingmouse.app'
+    compileSdk 34
 
-              defaultConfig {
-                  applicationId "com.floatingmouse.app"
-                  minSdk 24
-                  targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
-              }
+    defaultConfig {
+        applicationId "com.floatingmouse.app"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
 
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
-              }
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-              kotlinOptions {
-                  jvmTarget = '17'
-              }
-          }
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
 
-          dependencies {
-              implementation 'androidx.core:core-ktx:1.12.0'
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.10.0'
-          }
-          EOF
+dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.10.0'
+}
+EOF
 
           cat << 'EOF' > app/src/main/res/values/strings.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <string name="app_name">FloatingMouse</string>
-              <string name="accessibility_service_description">Floating Mouse Accessibility Service</string>
-          </resources>
-          EOF
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FloatingMouse</string>
+    <string name="accessibility_service_description">Floating Mouse Accessibility Service</string>
+</resources>
+EOF
 
           cat << 'EOF' > app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-              <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
 
-              <application
-                  android:allowBackup="true"
-                  android:label="@string/app_name"
-                  android:supportsRtl="true"
-                  android:theme="@style/Theme.AppCompat.Light">
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.Light">
 
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
-                  <service
-                      android:name=".FloatingMouseAccessibilityService"
-                      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.accessibilityservice.AccessibilityService" />
-                      </intent-filter>
-                      <meta-data
-                          android:name="android.accessibilityservice"
-                          android:resource="@xml/accessibility_service_config" />
-                  </service>
-              </application>
-          </manifest>
-          EOF
+        <service
+            android:name=".FloatingMouseAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+    </application>
+</manifest>
+EOF
 
           cat << 'EOF' > app/src/main/res/xml/accessibility_service_config.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-              android:accessibilityEventTypes="typeAllMask"
-              android:accessibilityFeedbackType="feedbackGeneric"
-              android:accessibilityFlags="flagDefault|flagRequestTouchExplorationMode"
-              android:canPerformGestures="true"
-              android:canRetrieveWindowContent="true"
-              android:description="@string/accessibility_service_description" />
-          EOF
+<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeAllMask"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault|flagRequestTouchExplorationMode"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/accessibility_service_description" />
+EOF
 
           cat << 'EOF' > app/src/main/java/com/floatingmouse/app/MainActivity.kt
-          package com.floatingmouse.app
+package com.floatingmouse.app
 
-          import android.os.Bundle
-          import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
 
-          class MainActivity : AppCompatActivity() {
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-              }
-          }
-          EOF
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+    }
+}
+EOF
 
           cat << 'EOF' > app/src/main/java/com/floatingmouse/app/FloatingMouseAccessibilityService.kt
-          package com.floatingmouse.app
+package com.floatingmouse.app
 
-          import android.accessibilityservice.AccessibilityService
-          import android.accessibilityservice.AccessibilityServiceInfo
-          import android.accessibilityservice.GestureDescription
-          import android.graphics.Path
+import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.accessibilityservice.GestureDescription
+import android.graphics.Path
 
-          class FloatingMouseAccessibilityService : AccessibilityService() {
+class FloatingMouseAccessibilityService : AccessibilityService() {
 
-              override fun onServiceConnected() {
-                  super.onServiceConnected()
-                  val info = AccessibilityServiceInfo().apply {
-                      eventTypes = AccessibilityServiceInfo.TYPES_ALL_MASK
-                      feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-                      flags = AccessibilityServiceInfo.FLAG_DEFAULT or
-                              AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE
-                  }
-                  serviceInfo = info
-              }
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        val info = AccessibilityServiceInfo().apply {
+            eventTypes = AccessibilityServiceInfo.TYPES_ALL_MASK
+            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+            flags = AccessibilityServiceInfo.FLAG_DEFAULT or
+                    AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE
+        }
+        serviceInfo = info
+    }
 
-              fun injectTouchClick(x: Float, y: Float) {
-                  val clickPath = Path().apply { moveTo(x, y) }
-                  val stroke = GestureDescription.StrokeDescription(clickPath, 0, 50)
-                  val gesture = GestureDescription.Builder().addStroke(stroke).build()
-                  dispatchGesture(gesture, null, null)
-              }
+    fun injectTouchClick(x: Float, y: Float) {
+        val clickPath = Path().apply { moveTo(x, y) }
+        val stroke = GestureDescription.StrokeDescription(clickPath, 0, 50)
+        val gesture = GestureDescription.Builder().addStroke(stroke).build()
+        dispatchGesture(gesture, null, null)
+    }
 
-              override fun onAccessibilityEvent(event: android.view.accessibility.AccessibilityEvent?) {}
-              override fun onInterrupt() {}
-          }
-          EOF
+    override fun onAccessibilityEvent(event: android.view.accessibility.AccessibilityEvent?) {}
+    override fun onInterrupt() {}
+}
+EOF
 
       - name: Build Debug APK
         run: gradle assembleDebug --no-daemon

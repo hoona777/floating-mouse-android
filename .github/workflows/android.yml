@@ -56,10 +56,8 @@ jobs:
           EOF
 
           cat << 'EOF' > app/build.gradle
-          plugins {
-              id 'com.android.application'
-              id 'org.jetbrains.kotlin.android'
-          }
+          apply plugin: 'com.android.application'
+          apply plugin: 'kotlin-android'
 
           android {
               namespace 'com.floatingmouse.app'
@@ -94,7 +92,7 @@ jobs:
           }
           EOF
 
-          cat << 'EOF' > app/src/main/res/values/strings.xml
+          cat << 'EOF' | sed 's/^[ \t]*//' > app/src/main/res/values/strings.xml
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
               <string name="app_name">FloatingMouse</string>
@@ -102,7 +100,7 @@ jobs:
           </resources>
           EOF
 
-          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          cat << 'EOF' | sed 's/^[ \t]*//' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -138,7 +136,7 @@ jobs:
           </manifest>
           EOF
 
-          cat << 'EOF' > app/src/main/res/xml/accessibility_service_config.xml
+          cat << 'EOF' | sed 's/^[ \t]*//' > app/src/main/res/xml/accessibility_service_config.xml
           <?xml version="1.0" encoding="utf-8"?>
           <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
               android:accessibilityEventTypes="typeAllMask"

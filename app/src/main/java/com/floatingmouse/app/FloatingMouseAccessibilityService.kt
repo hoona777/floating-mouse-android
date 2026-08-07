@@ -11,6 +11,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -18,7 +19,7 @@ import android.widget.Toast
 
 /**
  * Physical Mini-Mouse Overlay with Interactive Touchpad & Gesture Dragging for Android
- * Clean UI without unnecessary text/emojis on buttons
+ * Supports Mixamo Rigging, Full System Control, Right Click, and Half-Sized Custom Skins
  */
 class FloatingMouseAccessibilityService : AccessibilityService() {
 
@@ -44,7 +45,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
     }
 
     private fun showPhysicalMouseAndPointer() {
-        // Pointer Layout Params (60x60 px)
+        // 1. Pointer Layout Params - Half Sized Pointer (60x60 px)
         val pointerParams = WindowManager.LayoutParams(
             60,
             60,
@@ -61,6 +62,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             setImageBitmap(createPointerBitmap(currentSkinIndex))
         }
 
+        // Direct Touch Handling on Mouse Pointer Arrow
         mousePointerView?.setOnTouchListener(object : View.OnTouchListener {
             private var initialX = 0
             private var initialY = 0
@@ -88,6 +90,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
                         pointerParams.y = initialY + deltaY
                         windowManager?.updateViewLayout(mousePointerView, pointerParams)
 
+                        // Mixamo Rigging Drag Gesture Dispatching
                         if (isDragModeActive) {
                             injectTouchDrag(oldX.toFloat(), oldY.toFloat(), pointerParams.x.toFloat(), pointerParams.y.toFloat(), 80)
                         }
@@ -108,7 +111,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             }
         })
 
-        // Physical Mouse Widget (Super Compact)
+        // 2. Physical Mouse Overlay Widget (Super Compact & Ultra Small)
         val mouseShellParams = WindowManager.LayoutParams(
             230,
             180,
@@ -121,6 +124,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             y = 100
         }
 
+        // Mouse Container (Shape of a Physical Ergonomic Mouse)
         mouseShellView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(6, 6, 6, 6)
@@ -131,6 +135,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Drag Shell Listener to Move Mouse Widget on Phone Screen
         val dragMoveListener = object : View.OnTouchListener {
             private var sInitialX = 0
             private var sInitialY = 0
@@ -158,13 +163,13 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Mouse Top Buttons Layout: [Left Click] [Center Column: Skin + Drag Lock] [Right Click]
         val buttonsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             weightSum = 5f
             setPadding(0, 0, 0, 2)
         }
 
-        // Left Click Button (Clean: no text/emoji)
         val leftClickBtn = Button(this).apply {
             textSize = 8.5f
             setTextColor(Color.WHITE)
@@ -183,6 +188,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Center Column with Skin Switcher on top & Drag Lock on bottom
         val centerCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
@@ -191,6 +197,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             setOnTouchListener(dragMoveListener)
         }
 
+        // Skin Switcher Button
         val skinBtn = Button(this).apply {
             text = "P"
             textSize = 8f
@@ -211,6 +218,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Tiny Drag Lock Button (Center Bottom)
         val dragToggleBtn = Button(this).apply {
             text = "L"
             textSize = 8f
@@ -248,7 +256,6 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         centerCol.addView(skinBtn)
         centerCol.addView(dragToggleBtn)
 
-        // Right Click Button (Clean: no text/emoji)
         val rightClickBtn = Button(this).apply {
             textSize = 8.5f
             setTextColor(Color.LTGRAY)
@@ -271,6 +278,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         buttonsRow.addView(centerCol)
         buttonsRow.addView(rightClickBtn)
 
+        // FrameLayout container for Touchpad + Corner Scroll Arrows
         val touchpadContainer = FrameLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -280,6 +288,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Physical Touchpad Surface
         val touchpadView = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -292,6 +301,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Touchpad Gesture Controller for Mouse Pointer Movement
         touchpadView.setOnTouchListener(object : View.OnTouchListener {
             private var lastTouchX = 0f
             private var lastTouchY = 0f
@@ -316,6 +326,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
 
                         windowManager?.updateViewLayout(mousePointerView, pointerParams)
 
+                        // Dispatch Continuous Drag if Drag Mode is ON
                         if (isDragModeActive) {
                             injectTouchDrag(oldX.toFloat(), oldY.toFloat(), pointerParams.x.toFloat(), pointerParams.y.toFloat(), 60)
                         }
@@ -329,6 +340,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             }
         })
 
+        // Bottom-Left Corner Tiny Scroll Up Button
         val scrollUpBtn = Button(this).apply {
             text = "▲"
             textSize = 8f
@@ -347,6 +359,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Bottom-Right Corner Tiny Scroll Down Button
         val scrollDownBtn = Button(this).apply {
             text = "▼"
             textSize = 8f
@@ -369,6 +382,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         touchpadContainer.addView(scrollUpBtn)
         touchpadContainer.addView(scrollDownBtn)
 
+        // Assemble Physical Mouse Layout
         mouseShellView?.addView(buttonsRow)
         mouseShellView?.addView(touchpadContainer)
 
@@ -380,13 +394,14 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         }
     }
 
+    // Create Half-Sized Pointer Bitmaps (60x60 px)
     private fun createPointerBitmap(skinIndex: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(60, 60, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val paint = Paint().apply { isAntiAlias = true }
 
         when (skinIndex) {
-            1 -> {
+            1 -> { // Hand Pointer
                 paint.color = Color.parseColor("#FFCC80")
                 canvas.drawCircle(28f, 22f, 11f, paint)
                 canvas.drawRect(22f, 22f, 34f, 44f, paint)
@@ -395,7 +410,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
                 paint.strokeWidth = 2f
                 canvas.drawCircle(28f, 22f, 11f, paint)
             }
-            2 -> {
+            2 -> { // Gamer RGB Arrow
                 paint.color = Color.parseColor("#9C27B0")
                 val path = Path().apply {
                     moveTo(6f, 6f)
@@ -410,19 +425,19 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
                 paint.strokeWidth = 2.5f
                 canvas.drawPath(path, paint)
             }
-            3 -> {
+            3 -> { // Neon Glow Ring
                 paint.color = Color.parseColor("#00E5FF")
                 canvas.drawCircle(28f, 28f, 20f, paint)
                 paint.color = Color.WHITE
                 canvas.drawCircle(28f, 28f, 7f, paint)
             }
-            4 -> {
+            4 -> { // Laser Red Dot
                 paint.color = Color.RED
                 canvas.drawCircle(28f, 28f, 12f, paint)
                 paint.color = Color.parseColor("#FFCDD2")
                 canvas.drawCircle(28f, 28f, 5f, paint)
             }
-            else -> {
+            else -> { // Physical White Mouse Arrow Half-Sized
                 paint.color = Color.WHITE
                 paint.style = Paint.Style.FILL
                 val path = Path().apply {

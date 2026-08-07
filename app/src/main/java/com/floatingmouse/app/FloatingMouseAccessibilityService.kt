@@ -12,8 +12,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val info = AccessibilityServiceInfo().apply {
             eventTypes = AccessibilityServiceInfo.TYPES_ALL_MASK
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            flags = AccessibilityServiceInfo.FLAG_DEFAULT or
-                    AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE
+            flags = AccessibilityServiceInfo.FLAG_DEFAULT or AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE
         }
         serviceInfo = info
     }

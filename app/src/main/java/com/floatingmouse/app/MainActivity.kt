@@ -13,7 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 
 /**
  * Main Activity for Floating Mouse App
- * Target File Path in GitHub: app/src/main/java/com/floatingmouse/app/MainActivity.kt
+ * Target File Path: app/src/main/java/com/floatingmouse/app/MainActivity.kt
  */
 class MainActivity : AppCompatActivity() {
 
@@ -99,6 +99,16 @@ class MainActivity : AppCompatActivity() {
         rootLayout.addView(guideText)
 
         setContentView(scrollView)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (FloatingMouseAccessibilityService.isServiceRunning) {
+            val intent = Intent(this, FloatingMouseAccessibilityService::class.java).apply {
+                action = FloatingMouseAccessibilityService.ACTION_SHOW_MOUSE
+            }
+            startService(intent)
+        }
     }
 
     private fun openAccessibilitySettings() {

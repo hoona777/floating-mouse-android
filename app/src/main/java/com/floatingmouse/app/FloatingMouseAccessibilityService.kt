@@ -11,7 +11,9 @@ import android.content.Intent
 import android.graphics.*
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
-import android.util.DisplayMetrics
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -25,8 +27,8 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 
 /**
- * Advanced Physical Floating Mouse Accessibility Service
- * Target File Path in GitHub: app/src/main/java/com/floatingmouse/app/FloatingMouseAccessibilityService.kt
+ * Floating Mouse Accessibility Service
+ * Target File Path: app/src/main/java/com/floatingmouse/app/FloatingMouseAccessibilityService.kt
  */
 class FloatingMouseAccessibilityService : AccessibilityService() {
 
@@ -34,23 +36,26 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         const val ACTION_SHOW_MOUSE = "com.floatingmouse.app.ACTION_SHOW_MOUSE"
         const val NOTIFICATION_ID = 9981
         const val CHANNEL_ID = "floating_mouse_service_channel"
+        
+        var isServiceRunning = false
+            private set
     }
 
     private var windowManager: WindowManager? = null
 
-    // Separate Independent Floating Overlay Windows
+    // 100% Completely Separate Floating Windows
     private var mousePointerView: ImageView? = null
     private var mouseShellView: LinearLayout? = null // Touchpad Body Window
     private var clickBarView: LinearLayout? = null   // Click Bar Panel Window
     private var minimizedBubbleView: TextView? = null // Minimized Floating Badge
 
-    // Independent Window Manager Layout Parameters
+    // Layout Parameters
     private var pointerParams: WindowManager.LayoutParams? = null
     private var mouseShellParams: WindowManager.LayoutParams? = null
     private var clickBarParams: WindowManager.LayoutParams? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
 
-    // Flags & States
+    // Drag & Drop States
     private var isDragModeActive = false
     private var isGrabPointSaved = false
     private var grabStartX = 0f
@@ -58,15 +63,22 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
 
     private var isMinimized = false
     private var currentSkinIndex = 0
-    private val skinNames = arrayOf("فلش فیزیکی کوچک", "دست/پوینتر", "گیمینگ RGB", "نئون glow", "نقطه لیزر")
+    private val skinNames = arrayOf("فلش فیزیکی", "دست/پوینتر", "گیمینگ RGB", "نئون Glow", "نقطه لیزر")
 
     private var screenWidth = 1080
     private var screenHeight = 2400
 
     private var grabButtonRef: Button? = null
 
+    private fun dpToPx(dp: Int): Int {
+        val density = resources.displayMetrics.density
+        return (dp * density).toInt()
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
+        isServiceRunning = true
+
         val info = AccessibilityServiceInfo().apply {
             eventTypes = AccessibilityEvent.TYPES_ALL_MASK
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
@@ -76,16 +88,16 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        val displayMetrics = DisplayMetrics()
-        @Suppress("DEPRECATION")
-        windowManager?.defaultDisplay?.getMetrics(displayMetrics)
-        screenWidth = displayMetrics.widthPixels
-        screenHeight = displayMetrics.heightPixels
+        val metrics = resources.displayMetrics
+        screenWidth = metrics.widthPixels
+        screenHeight = metrics.heightPixels
 
         createNotificationChannel()
         startForegroundNotification()
 
-        setupFloatingComponents()
+        Handler(Looper.getMainLooper()).postDelayed({
+            setupFloatingComponents()
+        }, 300)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -110,33 +122,36 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
     }
 
     private fun startForegroundNotification() {
-        val showIntent = Intent(this, FloatingMouseAccessibilityService::class.java).apply {
-            action = ACTION_SHOW_MOUSE
+        try {
+            val showIntent = Intent(this, FloatingMouseAccessibilityService::class.java).apply {
+                action = ACTION_SHOW_MOUSE
+            }
+            val pendingIntent = PendingIntent.getService(
+                this,
+                0,
+                showIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("موس شناور فعال است")
+                .setContentText("برای نمایش و بازیابی موس روی صفحه، اینجا کلیک کنید")
+                .setSmallIcon(android.R.drawable.ic_menu_compass)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build()
+
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        val pendingIntent = PendingIntent.getService(
-            this,
-            0,
-            showIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("موس شناور فعال است")
-            .setContentText("برای نمایش و بازیابی موس روی صفحه، اینجا کلیک کنید")
-            .setSmallIcon(android.R.drawable.ic_menu_compass)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .build()
-
-        startForeground(NOTIFICATION_ID, notification)
     }
 
-    /**
-     * Restore and make all floating windows visible on screen
-     */
     fun restoreAndShowAllOverlays() {
         isMinimized = false
-        if (mousePointerView == null || mouseShellView == null || clickBarView == null) {
+        if (mousePointerView == null || mouseShellView == null || clickBarView == null ||
+            mousePointerView?.windowToken == null) {
             setupFloatingComponents()
             return
         }
@@ -144,7 +159,6 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         try {
             minimizedBubbleView?.visibility = View.GONE
 
-            // Bring Pointer to visible area
             pointerParams?.let {
                 it.x = screenWidth / 2
                 it.y = screenHeight / 3
@@ -152,23 +166,21 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
                 windowManager?.updateViewLayout(mousePointerView, it)
             }
 
-            // Bring Touchpad Shell to visible area (Bottom Right)
             mouseShellParams?.let {
-                it.x = (screenWidth * 0.45).toInt()
-                it.y = (screenHeight * 0.55).toInt()
+                it.x = (screenWidth * 0.48).toInt()
+                it.y = (screenHeight * 0.52).toInt()
                 mouseShellView?.visibility = View.VISIBLE
                 windowManager?.updateViewLayout(mouseShellView, it)
             }
 
-            // Bring Click Bar Panel to visible area (Bottom Left)
             clickBarParams?.let {
-                it.x = 40
-                it.y = (screenHeight * 0.55).toInt()
+                it.x = dpToPx(12)
+                it.y = (screenHeight * 0.52).toInt()
                 clickBarView?.visibility = View.VISIBLE
                 windowManager?.updateViewLayout(clickBarView, it)
             }
 
-            Toast.makeText(this, "موس و پنل‌های شناور بازیابی و ظاهر شدند 🖱️", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "موس و پنل‌های شناور ظاهر شدند 🖱️", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             e.printStackTrace()
             setupFloatingComponents()
@@ -179,19 +191,23 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         removeAllViewsQuietly()
 
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+            if (Settings.canDrawOverlays(this)) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+            }
         } else {
             @Suppress("DEPRECATION")
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        // 1. MOUSE POINTER CURSOR WINDOW
+        val pointerSize = dpToPx(32)
         mousePointerView = ImageView(this).apply {
             setImageBitmap(createPointerBitmap(currentSkinIndex))
         }
 
         pointerParams = WindowManager.LayoutParams(
-            60, 60,
+            pointerSize, pointerSize,
             layoutType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
@@ -203,17 +219,16 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             y = screenHeight / 3
         }
 
-        // 2. MINIMIZED FLOATING BUBBLE
         minimizedBubbleView = TextView(this).apply {
             text = "🖱️ موس"
             textSize = 12f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            setPadding(16, 12, 16, 12)
+            setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8))
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#1E293B"))
-                cornerRadius = 30f
-                setStroke(3, Color.parseColor("#00E5FF"))
+                cornerRadius = dpToPx(16).toFloat()
+                setStroke(dpToPx(2), Color.parseColor("#00E5FF"))
             }
             visibility = View.GONE
             setOnClickListener {
@@ -229,41 +244,40 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.LEFT
-            x = 50
-            y = 200
+            x = dpToPx(16)
+            y = dpToPx(100)
         }
 
-        // 3. INDEPENDENT TOUCHPAD BODY WINDOW (mouseShellView)
         mouseShellView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(10, 8, 10, 8)
+            setPadding(dpToPx(6), dpToPx(6), dpToPx(6), dpToPx(6))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#EE0F172A"))
-                cornerRadius = 16f
-                setStroke(3, Color.parseColor("#00E5FF"))
+                setColor(Color.parseColor("#F00F172A"))
+                cornerRadius = dpToPx(12).toFloat()
+                setStroke(dpToPx(2), Color.parseColor("#00E5FF"))
             }
         }
 
         mouseShellParams = WindowManager.LayoutParams(
-            420, 360,
+            dpToPx(175), dpToPx(165),
             layoutType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.LEFT
-            x = (screenWidth * 0.45).toInt()
-            y = (screenHeight * 0.55).toInt()
+            x = (screenWidth * 0.48).toInt()
+            y = (screenHeight * 0.52).toInt()
         }
 
         val touchpadHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(4, 2, 4, 6)
+            setPadding(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(4))
         }
 
         val touchpadTitle = TextView(this).apply {
-            text = "::: 🖱️ تاچ‌پد شناور :::"
-            textSize = 10.5f
+            text = "::: 🖱️ تاچ‌پد :::"
+            textSize = 10f
             setTextColor(Color.parseColor("#00E5FF"))
             typeface = Typeface.DEFAULT_BOLD
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -271,14 +285,14 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
 
         val centerPointerBtn = Button(this).apply {
             text = "🎯"
-            textSize = 10f
+            textSize = 9f
             setTextColor(Color.WHITE)
             setPadding(0, 0, 0, 0)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#334155"))
-                cornerRadius = 8f
+                cornerRadius = dpToPx(4).toFloat()
             }
-            layoutParams = LinearLayout.LayoutParams(36, 36).apply { setMargins(0, 0, 4, 0) }
+            layoutParams = LinearLayout.LayoutParams(dpToPx(26), dpToPx(26)).apply { setMargins(0, 0, dpToPx(2), 0) }
             setOnClickListener {
                 pointerParams?.let {
                     it.x = screenWidth / 2
@@ -290,14 +304,14 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
 
         val minimizeBtn = Button(this).apply {
             text = "—"
-            textSize = 10f
+            textSize = 9f
             setTextColor(Color.WHITE)
             setPadding(0, 0, 0, 0)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#334155"))
-                cornerRadius = 8f
+                cornerRadius = dpToPx(4).toFloat()
             }
-            layoutParams = LinearLayout.LayoutParams(36, 36)
+            layoutParams = LinearLayout.LayoutParams(dpToPx(26), dpToPx(26))
             setOnClickListener {
                 minimizeToBubble()
             }
@@ -338,8 +352,8 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val padSurface = View(this).apply {
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#1E293B"))
-                cornerRadius = 12f
-                setStroke(1, Color.parseColor("#334155"))
+                cornerRadius = dpToPx(8).toFloat()
+                setStroke(dpToPx(1), Color.parseColor("#334155"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -364,8 +378,8 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
                     lastTouchY = event.y
 
                     pointerParams?.let {
-                        it.x = (it.x + dx.toInt()).coerceIn(0, screenWidth - 20)
-                        it.y = (it.y + dy.toInt()).coerceIn(0, screenHeight - 20)
+                        it.x = (it.x + dx.toInt()).coerceIn(0, screenWidth - dpToPx(15))
+                        it.y = (it.y + dy.toInt()).coerceIn(0, screenHeight - dpToPx(15))
                         mousePointerView?.let { v -> windowManager?.updateViewLayout(v, it) }
 
                         if (isDragModeActive) {
@@ -382,37 +396,36 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         mouseShellView?.addView(touchpadHeader)
         mouseShellView?.addView(padSurface)
 
-        // 4. INDEPENDENT CLICK BAR PANEL WINDOW (clickBarView)
         clickBarView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(10, 8, 10, 8)
+            setPadding(dpToPx(6), dpToPx(6), dpToPx(6), dpToPx(6))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#EE0F172A"))
-                cornerRadius = 16f
-                setStroke(3, Color.parseColor("#FF4081"))
+                setColor(Color.parseColor("#F00F172A"))
+                cornerRadius = dpToPx(12).toFloat()
+                setStroke(dpToPx(2), Color.parseColor("#FF4081"))
             }
         }
 
         clickBarParams = WindowManager.LayoutParams(
-            440, WindowManager.LayoutParams.WRAP_CONTENT,
+            dpToPx(180), WindowManager.LayoutParams.WRAP_CONTENT,
             layoutType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.LEFT
-            x = 40
-            y = (screenHeight * 0.55).toInt()
+            x = dpToPx(12)
+            y = (screenHeight * 0.52).toInt()
         }
 
         val clickBarHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(4, 2, 4, 6)
+            setPadding(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(4))
         }
 
         val clickBarTitle = TextView(this).apply {
-            text = "::: 🖐️ پنل کلیک شناور :::"
-            textSize = 10.5f
+            text = "::: 🖐️ پنل کلیک :::"
+            textSize = 10f
             setTextColor(Color.parseColor("#FF4081"))
             typeface = Typeface.DEFAULT_BOLD
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -451,19 +464,19 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val clicksRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             weightSum = 3f
-            setPadding(0, 2, 0, 2)
+            setPadding(0, dpToPx(2), 0, dpToPx(2))
         }
 
         val leftClickBtn = Button(this).apply {
             text = "چپ"
-            textSize = 9.5f
+            textSize = 9f
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#1B2A4A"))
-                cornerRadius = 10f
-                setStroke(2, Color.parseColor("#00E5FF"))
+                cornerRadius = dpToPx(6).toFloat()
+                setStroke(dpToPx(1), Color.parseColor("#00E5FF"))
             }
-            layoutParams = LinearLayout.LayoutParams(0, 48, 1f).apply { setMargins(0, 0, 1, 0) }
+            layoutParams = LinearLayout.LayoutParams(0, dpToPx(36), 1f).apply { setMargins(0, 0, dpToPx(1), 0) }
             setOnClickListener {
                 val (tipX, tipY) = getPointerHotspot()
                 injectTouchClick(tipX, tipY)
@@ -471,15 +484,15 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         }
 
         val longPressBtn = Button(this).apply {
-            text = "نگه‌داشتن"
+            text = "نگه‌داشت"
             textSize = 8.5f
             setTextColor(Color.YELLOW)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#2A241B"))
-                cornerRadius = 10f
-                setStroke(2, Color.parseColor("#FFB300"))
+                cornerRadius = dpToPx(6).toFloat()
+                setStroke(dpToPx(1), Color.parseColor("#FFB300"))
             }
-            layoutParams = LinearLayout.LayoutParams(0, 48, 1f).apply { setMargins(1, 0, 1, 0) }
+            layoutParams = LinearLayout.LayoutParams(0, dpToPx(36), 1f).apply { setMargins(dpToPx(1), 0, dpToPx(1), 0) }
             setOnClickListener {
                 val (tipX, tipY) = getPointerHotspot()
                 injectLongPress(tipX, tipY)
@@ -488,14 +501,14 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
 
         val rightClickBtn = Button(this).apply {
             text = "راست"
-            textSize = 9.5f
+            textSize = 9f
             setTextColor(Color.LTGRAY)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#2A1B2A"))
-                cornerRadius = 10f
-                setStroke(2, Color.parseColor("#FF4081"))
+                cornerRadius = dpToPx(6).toFloat()
+                setStroke(dpToPx(1), Color.parseColor("#FF4081"))
             }
-            layoutParams = LinearLayout.LayoutParams(0, 48, 1f).apply { setMargins(1, 0, 0, 0) }
+            layoutParams = LinearLayout.LayoutParams(0, dpToPx(36), 1f).apply { setMargins(dpToPx(1), 0, 0, 0) }
             setOnClickListener {
                 val (tipX, tipY) = getPointerHotspot()
                 injectRightClick(tipX, tipY)
@@ -509,19 +522,19 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val dragToolsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             weightSum = 2f
-            setPadding(0, 2, 0, 2)
+            setPadding(0, dpToPx(2), 0, dpToPx(2))
         }
 
         grabButtonRef = Button(this).apply {
             text = "گرفتن 📍"
-            textSize = 9f
+            textSize = 8.5f
             setTextColor(Color.parseColor("#00E5FF"))
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#0F2027"))
-                cornerRadius = 8f
-                setStroke(2, Color.parseColor("#00E5FF"))
+                cornerRadius = dpToPx(6).toFloat()
+                setStroke(dpToPx(1), Color.parseColor("#00E5FF"))
             }
-            layoutParams = LinearLayout.LayoutParams(0, 48, 1f).apply { setMargins(0, 0, 2, 0) }
+            layoutParams = LinearLayout.LayoutParams(0, dpToPx(36), 1f).apply { setMargins(0, 0, dpToPx(1), 0) }
             setOnClickListener {
                 val (currentTipX, currentTipY) = getPointerHotspot()
 
@@ -533,9 +546,9 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
                     setTextColor(Color.WHITE)
                     background = GradientDrawable().apply {
                         setColor(Color.parseColor("#00C853"))
-                        cornerRadius = 8f
+                        cornerRadius = dpToPx(6).toFloat()
                     }
-                    Toast.makeText(this@FloatingMouseAccessibilityService, "محل شیء/مفصل ثبت شد. نشانگر را به مقصد برده و 'رها 🎯' را بزنید.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FloatingMouseAccessibilityService, "محل آیکون/مفصل ثبت شد. نشانگر را منتقل و 'رها 🎯' را بزنید.", Toast.LENGTH_SHORT).show()
                 } else {
                     injectPrecisionDragAndDrop(grabStartX, grabStartY, currentTipX, currentTipY)
                     isGrabPointSaved = false
@@ -543,8 +556,8 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
                     setTextColor(Color.parseColor("#00E5FF"))
                     background = GradientDrawable().apply {
                         setColor(Color.parseColor("#0F2027"))
-                        cornerRadius = 8f
-                        setStroke(2, Color.parseColor("#00E5FF"))
+                        cornerRadius = dpToPx(6).toFloat()
+                        setStroke(dpToPx(1), Color.parseColor("#00E5FF"))
                     }
                 }
             }
@@ -552,29 +565,29 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
 
         val dragToggleBtn = Button(this).apply {
             text = "کشیدن"
-            textSize = 9f
+            textSize = 8.5f
             setTextColor(Color.parseColor("#FFD700"))
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#222510"))
-                cornerRadius = 8f
-                setStroke(1, Color.parseColor("#FFD700"))
+                cornerRadius = dpToPx(6).toFloat()
+                setStroke(dpToPx(1), Color.parseColor("#FFD700"))
             }
-            layoutParams = LinearLayout.LayoutParams(0, 48, 1f).apply { setMargins(2, 0, 0, 0) }
+            layoutParams = LinearLayout.LayoutParams(0, dpToPx(36), 1f).apply { setMargins(dpToPx(1), 0, 0, 0) }
             setOnClickListener {
                 isDragModeActive = !isDragModeActive
                 if (isDragModeActive) {
                     text = "کشیدن [فعال]"
                     background = GradientDrawable().apply {
                         setColor(Color.parseColor("#00E676"))
-                        cornerRadius = 8f
+                        cornerRadius = dpToPx(6).toFloat()
                     }
-                    Toast.makeText(this@FloatingMouseAccessibilityService, "حالت کشیدن پیوسته فعال شد. حرکت تاچ‌پد، شیء زیر موس را می‌کشد.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FloatingMouseAccessibilityService, "حالت کشیدن زنده فعال شد.", Toast.LENGTH_SHORT).show()
                 } else {
                     text = "کشیدن"
                     background = GradientDrawable().apply {
                         setColor(Color.parseColor("#222510"))
-                        cornerRadius = 8f
-                        setStroke(1, Color.parseColor("#FFD700"))
+                        cornerRadius = dpToPx(6).toFloat()
+                        setStroke(dpToPx(1), Color.parseColor("#FFD700"))
                     }
                     Toast.makeText(this@FloatingMouseAccessibilityService, "حالت کشیدن غیرفعال شد", Toast.LENGTH_SHORT).show()
                 }
@@ -587,18 +600,18 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val utilsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             weightSum = 3f
-            setPadding(0, 2, 0, 0)
+            setPadding(0, dpToPx(2), 0, 0)
         }
 
         val scrollUpBtn = Button(this).apply {
-            text = "اسکرول ▲"
-            textSize = 8.5f
+            text = "بالا ▲"
+            textSize = 8f
             setTextColor(Color.CYAN)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#1E293B"))
-                cornerRadius = 8f
+                cornerRadius = dpToPx(6).toFloat()
             }
-            layoutParams = LinearLayout.LayoutParams(0, 42, 1f).apply { setMargins(0, 0, 1, 0) }
+            layoutParams = LinearLayout.LayoutParams(0, dpToPx(32), 1f).apply { setMargins(0, 0, dpToPx(1), 0) }
             setOnClickListener {
                 val (px, py) = getPointerHotspot()
                 injectTouchDrag(px, py + 300f, px, py - 300f, 300)
@@ -606,14 +619,14 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         }
 
         val scrollDownBtn = Button(this).apply {
-            text = "اسکرول ▼"
-            textSize = 8.5f
+            text = "پایین ▼"
+            textSize = 8f
             setTextColor(Color.CYAN)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#1E293B"))
-                cornerRadius = 8f
+                cornerRadius = dpToPx(6).toFloat()
             }
-            layoutParams = LinearLayout.LayoutParams(0, 42, 1f).apply { setMargins(1, 0, 1, 0) }
+            layoutParams = LinearLayout.LayoutParams(0, dpToPx(32), 1f).apply { setMargins(dpToPx(1), 0, dpToPx(1), 0) }
             setOnClickListener {
                 val (px, py) = getPointerHotspot()
                 injectTouchDrag(px, py - 300f, px, py + 300f, 300)
@@ -622,14 +635,14 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
 
         val skinBtn = Button(this).apply {
             text = "پوسته"
-            textSize = 8.5f
+            textSize = 8f
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#10222A"))
-                cornerRadius = 8f
-                setStroke(1, Color.parseColor("#00E5FF"))
+                cornerRadius = dpToPx(6).toFloat()
+                setStroke(dpToPx(1), Color.parseColor("#00E5FF"))
             }
-            layoutParams = LinearLayout.LayoutParams(0, 42, 1f).apply { setMargins(1, 0, 0, 0) }
+            layoutParams = LinearLayout.LayoutParams(0, dpToPx(32), 1f).apply { setMargins(dpToPx(1), 0, 0, 0) }
             setOnClickListener {
                 currentSkinIndex = (currentSkinIndex + 1) % skinNames.size
                 val newBitmap = createPointerBitmap(currentSkinIndex)
@@ -648,10 +661,10 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         clickBarView?.addView(utilsRow)
 
         try {
-            windowManager?.addView(mousePointerView, pointerParams)
-            windowManager?.addView(minimizedBubbleView, bubbleParams)
-            windowManager?.addView(mouseShellView, mouseShellParams)
-            windowManager?.addView(clickBarView, clickBarParams)
+            if (mousePointerView?.windowToken == null) windowManager?.addView(mousePointerView, pointerParams)
+            if (minimizedBubbleView?.windowToken == null) windowManager?.addView(minimizedBubbleView, bubbleParams)
+            if (mouseShellView?.windowToken == null) windowManager?.addView(mouseShellView, mouseShellParams)
+            if (clickBarView?.windowToken == null) windowManager?.addView(clickBarView, clickBarParams)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -675,35 +688,39 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
     private fun getPointerHotspot(): Pair<Float, Float> {
         val px = (pointerParams?.x ?: 0).toFloat()
         val py = (pointerParams?.y ?: 0).toFloat()
+        val offset = dpToPx(14).toFloat()
         return when (currentSkinIndex) {
-            1 -> Pair(px + 28f, py + 22f)
-            3, 4 -> Pair(px + 28f, py + 28f)
-            else -> Pair(px + 6f, py + 6f)
+            1 -> Pair(px + offset, py + offset)
+            3, 4 -> Pair(px + offset, py + offset)
+            else -> Pair(px + dpToPx(3).toFloat(), py + dpToPx(3).toFloat())
         }
     }
 
     private fun createPointerBitmap(skinIndex: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(60, 60, Bitmap.Config.ARGB_8888)
+        val size = dpToPx(32)
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val paint = Paint().apply { isAntiAlias = true }
+
+        val center = size / 2f
 
         when (skinIndex) {
             1 -> {
                 paint.color = Color.parseColor("#FFCC80")
-                canvas.drawCircle(28f, 22f, 11f, paint)
-                canvas.drawRect(22f, 22f, 34f, 44f, paint)
+                canvas.drawCircle(center, center - 2f, size * 0.28f, paint)
+                canvas.drawRect(center - 5f, center, center + 5f, size - 2f, paint)
                 paint.color = Color.BLACK
                 paint.style = Paint.Style.STROKE
                 paint.strokeWidth = 2f
-                canvas.drawCircle(28f, 22f, 11f, paint)
+                canvas.drawCircle(center, center - 2f, size * 0.28f, paint)
             }
             2 -> {
                 paint.color = Color.parseColor("#9C27B0")
                 val path = Path().apply {
-                    moveTo(6f, 6f)
-                    lineTo(50f, 28f)
-                    lineTo(30f, 30f)
-                    lineTo(28f, 50f)
+                    moveTo(3f, 3f)
+                    lineTo(size - 3f, size / 2f)
+                    lineTo(size / 2f, size / 2f)
+                    lineTo(size / 2f, size - 3f)
                     close()
                 }
                 canvas.drawPath(path, paint)
@@ -714,24 +731,24 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
             }
             3 -> {
                 paint.color = Color.parseColor("#00E5FF")
-                canvas.drawCircle(28f, 28f, 20f, paint)
+                canvas.drawCircle(center, center, size * 0.42f, paint)
                 paint.color = Color.WHITE
-                canvas.drawCircle(28f, 28f, 7f, paint)
+                canvas.drawCircle(center, center, size * 0.18f, paint)
             }
             4 -> {
                 paint.color = Color.RED
-                canvas.drawCircle(28f, 28f, 12f, paint)
+                canvas.drawCircle(center, center, size * 0.35f, paint)
                 paint.color = Color.parseColor("#FFCDD2")
-                canvas.drawCircle(28f, 28f, 5f, paint)
+                canvas.drawCircle(center, center, size * 0.12f, paint)
             }
             else -> {
                 paint.color = Color.WHITE
                 paint.style = Paint.Style.FILL
                 val path = Path().apply {
-                    moveTo(6f, 6f)
-                    lineTo(25f, 52f)
-                    lineTo(32f, 32f)
-                    lineTo(52f, 25f)
+                    moveTo(3f, 3f)
+                    lineTo(size * 0.45f, size - 3f)
+                    lineTo(size * 0.58f, size * 0.58f)
+                    lineTo(size - 3f, size * 0.45f)
                     close()
                 }
                 canvas.drawPath(path, paint)
@@ -828,10 +845,10 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
 
     private fun removeAllViewsQuietly() {
         try {
-            mousePointerView?.let { windowManager?.removeView(it) }
-            mouseShellView?.let { windowManager?.removeView(it) }
-            clickBarView?.let { windowManager?.removeView(it) }
-            minimizedBubbleView?.let { windowManager?.removeView(it) }
+            mousePointerView?.let { if (it.windowToken != null) windowManager?.removeView(it) }
+            mouseShellView?.let { if (it.windowToken != null) windowManager?.removeView(it) }
+            clickBarView?.let { if (it.windowToken != null) windowManager?.removeView(it) }
+            minimizedBubbleView?.let { if (it.windowToken != null) windowManager?.removeView(it) }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -839,6 +856,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        isServiceRunning = false
         removeAllViewsQuietly()
     }
 

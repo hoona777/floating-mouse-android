@@ -1,4 +1,4 @@
-package com.floatingmouse/app
+package com.floatingmouse.app
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription

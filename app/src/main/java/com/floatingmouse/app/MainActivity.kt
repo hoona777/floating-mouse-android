@@ -2,6 +2,7 @@ package com.floatingmouse.app
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
@@ -11,10 +12,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
-/**
- * Main Activity for Floating Mouse App
- * Target File Path in GitHub: app/src/main/java/com/floatingmouse/app/MainActivity.kt
- */
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,55 +19,46 @@ class MainActivity : AppCompatActivity() {
 
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 64, 48, 64)
-            setBackgroundColor(0xFF12131C.toInt())
+            setPadding(40, 60, 40, 40)
+            setBackgroundColor(0xFF0F172A.toInt()) // Dark Slate Background
         }
 
-        val scrollView = ScrollView(this).apply {
-            addView(rootLayout)
-        }
-
-        val title = TextView(this).apply {
-            text = "موس شناور حرفه‌ای اندروید"
+        val titleView = TextView(this).apply {
+            text = "موس و تاچ‌پد شناور پیشرفته"
             textSize = 22f
-            setTextColor(0xFF00E5FF.toInt())
-            setPadding(0, 0, 0, 24)
+            setTextColor(0xFF38BDF8.toInt())
+            setPadding(0, 0, 0, 20)
         }
 
-        val desc = TextView(this).apply {
-            text = "برای فعال‌سازی و استفاده از موس شناور و پنل‌های کاملاً مستقل:"
+        val subtitleView = TextView(this).apply {
+            text = "راهنمای استفاده و فعال‌سازی سرویس دسترسی"
             textSize = 14f
-            setTextColor(0xFFE2E8F0.toInt())
-            setPadding(0, 0, 0, 32)
+            setTextColor(0xFF94A3B8.toInt())
+            setPadding(0, 0, 0, 40)
         }
 
-        val btnOverlay = Button(this).apply {
-            text = "۱. اعطای مجوز پنجره شناور (Draw Overlays)"
-            setOnClickListener { checkOverlayPermission() }
-        }
-
-        val btnService = Button(this).apply {
-            text = "۲. فعال‌سازی سرویس دسترسی‌پذیری (Accessibility)"
-            setOnClickListener { openAccessibilitySettings() }
-        }
-
-        val btnShowMouse = Button(this).apply {
-            text = "۳. 🖱️ بازسازی و بازکردن مجدد موس شناور"
-            setTextColor(0xFF00E5FF.toInt())
+        val btnOverlayPermission = Button(this).apply {
+            text = "۱. اعطای مجوز پنجره‌های شناور (Overlay)"
             setOnClickListener {
-                val intent = Intent(this@MainActivity, FloatingMouseAccessibilityService::class.java).apply {
-                    action = FloatingMouseAccessibilityService.ACTION_SHOW_MOUSE
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this@MainActivity)) {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                    startActivity(intent)
+                } else {
+                    Toast.makeText(this@MainActivity, "مجوز پنجره‌های شناور قبلاً اعطا شده است.", Toast.LENGTH_SHORT).show()
                 }
-                startService(intent)
-                Toast.makeText(this@MainActivity, "دستور بازسازی موس شناور ارسال شد", Toast.LENGTH_SHORT).show()
             }
         }
 
-        val guideTitle = TextView(this).apply {
-            text = "\n💡 ویژگی‌ها و راهنمای جابه‌جایی آیکون‌ها و مفاصل Mixamo:"
-            textSize = 16f
-            setTextColor(0xFFFF4081.toInt())
-            setPadding(0, 24, 0, 12)
+        val btnAccessibilityPermission = Button(this).apply {
+            text = "۲. فعال‌سازی سرویس دسترسی (Accessibility)"
+            setOnClickListener {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                startActivity(intent)
+                Toast.makeText(this@MainActivity, "لطفاً برنامه 'موس شناور' را پیدا و روشن کنید.", Toast.LENGTH_LONG).show()
+            }
         }
 
         val guideText = TextView(this).apply {
@@ -90,43 +78,19 @@ class MainActivity : AppCompatActivity() {
             textSize = 13f
             setTextColor(0xFFCBD5E1.toInt())
             setLineSpacing(8f, 1.1f)
+            setPadding(0, 40, 0, 20)
         }
 
-        rootLayout.addView(title)
-        rootLayout.addView(desc)
-        rootLayout.addView(btnOverlay)
-        rootLayout.addView(btnService)
-        rootLayout.addView(btnShowMouse)
-        rootLayout.addView(guideTitle)
-        rootLayout.addView(guideText)
-
-        setContentView(scrollView)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (FloatingMouseAccessibilityService.isServiceRunning) {
-            val intent = Intent(this, FloatingMouseAccessibilityService::class.java).apply {
-                action = FloatingMouseAccessibilityService.ACTION_SHOW_MOUSE
-            }
-            startService(intent)
+        val scrollView = ScrollView(this).apply {
+            addView(guideText)
         }
-    }
 
-    private fun openAccessibilitySettings() {
-        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-        startActivity(intent)
-    }
+        rootLayout.addView(titleView)
+        rootLayout.addView(subtitleView)
+        rootLayout.addView(btnOverlayPermission)
+        rootLayout.addView(btnAccessibilityPermission)
+        rootLayout.addView(scrollView)
 
-    private fun checkOverlayPermission() {
-        if (!Settings.canDrawOverlays(this)) {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
-            )
-            startActivity(intent)
-        } else {
-            Toast.makeText(this, "مجوز پنجره شناور قبلا اعطا شده است", Toast.LENGTH_SHORT).show()
-        }
+        setContentView(rootLayout)
     }
 }

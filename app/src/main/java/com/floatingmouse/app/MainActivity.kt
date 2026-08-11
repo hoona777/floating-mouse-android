@@ -11,6 +11,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
+/**
+ * Main Activity for Floating Mouse App
+ * Target File Path in GitHub: app/src/main/java/com/floatingmouse/app/MainActivity.kt
+ */
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,16 +75,18 @@ class MainActivity : AppCompatActivity() {
 
         val guideText = TextView(this).apply {
             text = "• نقطه هدف‌گیری دقیق پوینتر (Exact Pointer Hotspot):\n" +
-                   "  نقطه برخورد کلیک‌ها دقیقاً نوک نوکِ فلش/پوینتر است تا آیکون‌ها و دایره‌های میکسامو ۱۰۰٪ دقیق لمس شوند.\n\n" +
-                   "• جابه‌جایی آیکون‌ها و مفاصل میکسامو (روش ۱ - هوشمند):\n" +
-                   "  ۱. نوک فلش موس را روی آیکون یا مفصل قرار دهید.\n" +
-                   "  ۲. دکمه 'گرفتن 📍' را بزنید.\n" +
-                   "  ۳. موس را به مقصد ببرید و 'رها 🎯' را بزنید.\n\n" +
+                   "  نقطه برخورد کلیک‌ها دقیقاً نوک نوکِ فلش/پوینتر (مختصات ۰و۰) است تا آیکون‌ها، نوار بالای مرورگر و دایره‌های میکسامو ۱۰۰٪ دقیق لمس شوند.\n\n" +
+                   "• جابه‌جایی آیکون‌های صفحه اصلی و مفاصل میکسامو (روش ۱ - هوشمند):\n" +
+                   "  ۱. نوک نوک فلش موس را روی آیکون یا مفصل Mixamo قرار دهید.\n" +
+                   "  ۲. دکمه 'گرفتن 📍' را بزنید (مکان اولیه ثبت می‌شود).\n" +
+                   "  ۳. موس را به مقصد ببرید و 'رها 🎯' را بزنید. سیستم حرکت لمس پیوسته با مکث اولیه ۶۵0ms اجرا می‌کند تا آیکون/مفصل جا‌به‌جا شود.\n\n" +
                    "• حالت قفل فشار/لمس (روش ۲ - Touch Hold Lock 🔒):\n" +
                    "  ۱. نوک فلش را روی مفصل یا آیکون بگذارید.\n" +
                    "  ۲. دکمه 'فشار 🔒' را بزنید تا لمس روی صفحه قفل بماند.\n" +
                    "  ۳. با تاچ‌پد موس را به مقصد بکشید.\n" +
-                   "  ۴. دکمه 'رها 🔓' را بزنید تا لمس آزاد شود."
+                   "  ۴. دکمه 'رها 🔓' را بزنید تا لمس آزاد شود.\n\n" +
+                   "• کلیک و دو کلیک سریع (برای نوار مرورگر و برنامه‌ها):\n" +
+                   "  'چپ' برای تک کلیک، '۲ کلیک' برای باز کردن برنامه‌ها/پوشه‌ها، 'راست' برای منوی راست کلیک، و 'مکث/نگه' برای نگه داشتن لمس به مدت ۸۰۰ms."
             textSize = 13f
             setTextColor(0xFFCBD5E1.toInt())
             setLineSpacing(8f, 1.1f)
@@ -99,6 +105,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Automatically attempt to restore overlays if service is enabled
         if (FloatingMouseAccessibilityService.isServiceRunning) {
             val intent = Intent(this, FloatingMouseAccessibilityService::class.java).apply {
                 action = FloatingMouseAccessibilityService.ACTION_SHOW_MOUSE

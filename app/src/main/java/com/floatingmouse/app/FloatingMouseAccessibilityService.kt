@@ -565,44 +565,9 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
                 setStroke(dpToPx(1), Color.parseColor("#00E5FF"))
             }
             layoutParams = LinearLayout.LayoutParams(0, dpToPx(36), 1f).apply { setMargins(0, 0, dpToPx(1), 0) }
-            
-            var isHoldingLeft = false
-            val holdRunnable = Runnable {
-                isHoldingLeft = true
+            setOnClickListener {
                 val (tipX, tipY) = getPointerHotspot()
-                startTouchHold(tipX, tipY)
-                background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#00E5FF"))
-                    cornerRadius = dpToPx(6).toFloat()
-                }
-            }
-
-            setOnTouchListener { v, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        isHoldingLeft = false
-                        v.handler?.postDelayed(holdRunnable, 200)
-                        true
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        v.handler?.removeCallbacks(holdRunnable)
-                        val (tipX, tipY) = getPointerHotspot()
-                        if (isHoldingLeft) {
-                            releaseTouchHold(tipX, tipY)
-                            isHoldingLeft = false
-                        } else {
-                            // Instant crisp tap for web buttons (Mixamo, links, UI)
-                            injectTouchClick(tipX, tipY)
-                        }
-                        background = GradientDrawable().apply {
-                            setColor(Color.parseColor("#1B2A4A"))
-                            cornerRadius = dpToPx(6).toFloat()
-                            setStroke(dpToPx(1), Color.parseColor("#00E5FF"))
-                        }
-                        true
-                    }
-                    else -> false
-                }
+                injectTouchClick(tipX, tipY)
             }
         }
 
@@ -940,6 +905,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val clampedY = y.coerceIn(1f, (screenHeight - 1).toFloat())
         val clickPath = Path().apply {
             moveTo(clampedX, clampedY)
+            lineTo(clampedX, clampedY)
         }
         val stroke = GestureDescription.StrokeDescription(clickPath, 0, 50)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
@@ -951,10 +917,10 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val clampedY = y.coerceIn(1f, (screenHeight - 1).toFloat())
         val clickPath = Path().apply {
             moveTo(clampedX, clampedY)
-            lineTo(clampedX + 0.1f, clampedY + 0.1f)
+            lineTo(clampedX, clampedY)
         }
-        val stroke1 = GestureDescription.StrokeDescription(clickPath, 0, 60)
-        val stroke2 = GestureDescription.StrokeDescription(clickPath, 100, 60)
+        val stroke1 = GestureDescription.StrokeDescription(clickPath, 0, 50)
+        val stroke2 = GestureDescription.StrokeDescription(clickPath, 100, 50)
         val gesture = GestureDescription.Builder()
             .addStroke(stroke1)
             .addStroke(stroke2)
@@ -967,7 +933,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val clampedY = y.coerceIn(1f, (screenHeight - 1).toFloat())
         val clickPath = Path().apply {
             moveTo(clampedX, clampedY)
-            lineTo(clampedX + 0.1f, clampedY + 0.1f)
+            lineTo(clampedX, clampedY)
         }
         val stroke = GestureDescription.StrokeDescription(clickPath, 0, 800)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
@@ -979,7 +945,7 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val clampedY = y.coerceIn(1f, (screenHeight - 1).toFloat())
         val clickPath = Path().apply {
             moveTo(clampedX, clampedY)
-            lineTo(clampedX + 0.1f, clampedY + 0.1f)
+            lineTo(clampedX, clampedY)
         }
         val stroke = GestureDescription.StrokeDescription(clickPath, 0, 750)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
@@ -994,9 +960,9 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val clampedY = y.coerceIn(1f, (screenHeight - 1).toFloat())
         val holdPath = Path().apply {
             moveTo(clampedX, clampedY)
-            lineTo(clampedX + 0.1f, clampedY + 0.1f)
+            lineTo(clampedX, clampedY)
         }
-        val stroke = GestureDescription.StrokeDescription(holdPath, 0, 600, true)
+        val stroke = GestureDescription.StrokeDescription(holdPath, 0, 100, true)
         activeHoldStroke = stroke
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
         dispatchGesture(gesture, null, null)
@@ -1038,10 +1004,10 @@ class FloatingMouseAccessibilityService : AccessibilityService() {
         val clampedY = y.coerceIn(1f, (screenHeight - 1).toFloat())
         val path = Path().apply {
             moveTo(clampedX, clampedY)
-            lineTo(clampedX + 0.1f, clampedY + 0.1f)
+            lineTo(clampedX, clampedY)
         }
-        val stroke = activeHoldStroke?.continueStroke(path, 0, 80, false)
-            ?: GestureDescription.StrokeDescription(path, 0, 80, false)
+        val stroke = activeHoldStroke?.continueStroke(path, 0, 50, false)
+            ?: GestureDescription.StrokeDescription(path, 0, 50, false)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
         dispatchGesture(gesture, null, null)
         activeHoldStroke = null
